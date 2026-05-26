@@ -35,6 +35,7 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
   create() {
     const { width, height } = this.scale;
     const cx = width / 2;
+    this.input.setTopOnly(false);
 
     this.add.rectangle(cx, height / 2, width, height, 0x0f0f23);
 

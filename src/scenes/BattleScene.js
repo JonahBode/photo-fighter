@@ -42,6 +42,7 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
 
   create() {
     const { width, height } = this.scale;
+    this.input.setTopOnly(false);
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x0d1b2a);
 
