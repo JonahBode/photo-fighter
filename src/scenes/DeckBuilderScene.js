@@ -21,6 +21,17 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
     this._gridMeta = null;
   }
 
+  preload() {
+    // Load all card images so they display in the grid
+    const customCards = this._loadCustomCards();
+    const allCards = [...STARTER_CARDS, ...customCards];
+    allCards.forEach((card) => {
+      if (card.image && !this.textures.exists(card.id)) {
+        this.load.image(card.id, card.image);
+      }
+    });
+  }
+
   create() {
     const { width, height } = this.scale;
     const cx = width / 2;
@@ -72,7 +83,7 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
   _renderCardGrid(cards) {
     const cols = 3;
     const cardW = 110;
-    const cardH = 80;
+    const cardH = 110; // taller to accommodate image
     const gap = 6;
     const viewportX = 24;
     const viewportY = 116;
@@ -144,9 +155,17 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
       .setStrokeStyle(2, borderColor)
       .setInteractive({ useHandCursor: true });
 
+    const items = [bg];
+
+    // Card image (top portion of card)
+    if (this.textures.exists(card.id)) {
+      const img = this.add.image(x + w / 2, y + 28, card.id).setDisplaySize(w - 8, 44);
+      items.push(img);
+    }
+
     const nameText = this.add
-      .text(x + w / 2, y + h / 2 - 10, card.name, {
-        fontSize: '12px',
+      .text(x + w / 2, y + h / 2 + 14, card.name, {
+        fontSize: '11px',
         fontFamily: 'Arial, sans-serif',
         color: '#ffffff',
         wordWrap: { width: w - 8 },
@@ -155,12 +174,14 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
       .setOrigin(0.5);
 
     const tierText = this.add
-      .text(x + w / 2, y + h / 2 + 17, `Tier ${card.tier}`, {
-        fontSize: '10px',
+      .text(x + w / 2, y + h - 14, `Tier ${card.tier}  •  Cost ${card.cost}`, {
+        fontSize: '9px',
         fontFamily: 'Arial, sans-serif',
         color: '#aaaaaa',
       })
       .setOrigin(0.5);
+
+    items.push(nameText, tierText);
 
     bg.on('pointerdown', () => {
       if (this._selectedIds.has(card.id)) {
@@ -177,7 +198,7 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
       this._deckCountText.setText(this._deckCountLabel());
     });
 
-    this._gridContainer.add([bg, nameText, tierText]);
+    this._gridContainer.add(items);
   }
 
   _saveDeck() {
