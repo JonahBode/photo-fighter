@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Photo Fighter</title>
   <style>
     * {
@@ -16,12 +22,18 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
+      position: fixed;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
+      touch-action: none;
     }
 
     #game-container {
       position: relative;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
     }
 
     /* Hidden file input used by CardCreatorScene for image uploads */
@@ -43,6 +55,8 @@
       aria-label="Upload card image"
     />
   </div>
+
+  <!-- itch.io embed tip: set frame to 390x844 or enable fill-frame resizing. -->
 
   <!-- Load Phaser from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>

@@ -1,0 +1,15 @@
+export const MOBILE = {
+  width: 390,
+  height: 844,
+  buttonWidth: 300,
+  buttonHeight: 52,
+  buttonFontSize: '22px',
+  titleFontSize: '44px',
+  bodyFontSize: '16px',
+  cardWidth: 100,
+  cardHeight: 130,
+  padding: 16,
+  accentColor: '#f0a500',
+  textColor: '#ffffff',
+  dimColor: '#aaaaaa',
+};

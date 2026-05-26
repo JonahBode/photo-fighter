@@ -2,19 +2,16 @@
  * ProgressionScene.js
  * Shown after each battle.
  * Displays the match result, newly unlocked cards, and stats.
- * Data is passed from BattleScene via scene start data.
  */
 
 import ProgressionManager from '../systems/ProgressionManager.js';
+import { MOBILE } from '../utils/MobileLayout.js';
 
 export default class ProgressionScene extends Phaser.Scene { // eslint-disable-line no-undef
   constructor() {
     super({ key: 'ProgressionScene' });
   }
 
-  /**
-   * @param {{ outcome: 'win'|'loss', newCards: import('../systems/CardSchema.js').Card[] }} data
-   */
   init(data) {
     this._outcome = data.outcome || 'loss';
     this._newCards = data.newCards || [];
@@ -26,130 +23,109 @@ export default class ProgressionScene extends Phaser.Scene { // eslint-disable-l
     const progression = new ProgressionManager();
     const stats = progression.getStats();
 
-    // ── Background ────────────────────────────────────────────────────────────
     this.add.rectangle(cx, height / 2, width, height, 0x0f0f23);
 
-    // ── Result banner ─────────────────────────────────────────────────────────
     const isWin = this._outcome === 'win';
-    const bannerColor = isWin ? '#f0a500' : '#ff4444';
-    const bannerText = isWin ? '🏆  VICTORY!' : '💀  DEFEAT';
-
     this.add
-      .text(cx, 100, bannerText, {
-        fontSize: '72px',
+      .text(cx, 70, isWin ? 'VICTORY!' : 'DEFEAT', {
+        fontSize: '42px',
         fontFamily: 'Arial Black, sans-serif',
-        color: bannerColor,
+        color: isWin ? '#f0a500' : '#ff4444',
         stroke: '#000',
-        strokeThickness: 10,
+        strokeThickness: 6,
       })
       .setOrigin(0.5);
 
-    // ── Stats grid ────────────────────────────────────────────────────────────
     const statsLines = [
       `Wins: ${stats.wins}   Losses: ${stats.losses}`,
-      `Win Streak: ${stats.winStreak}   Total Matches: ${stats.totalMatches}`,
-      `Highest Tier Reached: ${stats.highestTierReached}`,
+      `Win Streak: ${stats.winStreak}`,
+      `Matches Played: ${stats.totalMatches}`,
+      `Highest Tier: ${stats.highestTierReached}`,
     ];
 
     statsLines.forEach((line, i) => {
       this.add
-        .text(cx, 220 + i * 38, line, {
-          fontSize: '22px',
+        .text(cx, 132 + i * 30, line, {
+          fontSize: '18px',
           fontFamily: 'Arial, sans-serif',
           color: '#cccccc',
         })
         .setOrigin(0.5);
     });
 
-    // ── Newly unlocked cards ──────────────────────────────────────────────────
-    if (this._newCards.length > 0) {
-      this.add
-        .text(cx, 360, '🔓  New Cards Unlocked!', {
-          fontSize: '28px',
-          fontFamily: 'Arial Black, sans-serif',
-          color: '#44ff88',
-          stroke: '#000',
-          strokeThickness: 4,
-        })
-        .setOrigin(0.5);
-
-      this._newCards.forEach((card, i) => {
-        const x = cx - (this._newCards.length - 1) * 80 + i * 160;
-        this._renderUnlockCard(card, x, 460);
-      });
-    } else {
-      const noUnlockMsg = isWin
-        ? 'No new cards this time — keep winning!'
-        : 'Consolation reward coming after 3 losses.';
-      this.add
-        .text(cx, 390, noUnlockMsg, {
-          fontSize: '18px',
-          fontFamily: 'Arial, sans-serif',
-          color: '#888888',
-        })
-        .setOrigin(0.5);
-    }
-
-    // ── Action buttons ────────────────────────────────────────────────────────
-    this._makeButton(cx - 160, height - 80, '⚔  Play Again', () =>
-      this.scene.start('BattleScene')
-    );
-    this._makeButton(cx + 160, height - 80, '🏠  Main Menu', () =>
-      this.scene.start('MainMenuScene')
-    );
-  }
-
-  // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-  _renderUnlockCard(card, x, y) {
-    this.add.rectangle(x, y, 140, 100, 0x1a2a4e).setStrokeStyle(2, 0x44ff88);
-
     this.add
-      .text(x, y - 22, card.name, {
-        fontSize: '14px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#ffffff',
-        wordWrap: { width: 130 },
-        align: 'center',
+      .text(cx, 272, 'Unlocked Cards', {
+        fontSize: '24px',
+        fontFamily: 'Arial Black, sans-serif',
+        color: '#44ff88',
       })
       .setOrigin(0.5);
 
+    if (this._newCards.length === 0) {
+      this.add
+        .text(cx, 320, isWin ? 'No unlocks this match.' : 'Consolation reward after 3 losses.', {
+          fontSize: MOBILE.bodyFontSize,
+          fontFamily: 'Arial, sans-serif',
+          color: '#888888',
+          align: 'center',
+        })
+        .setOrigin(0.5);
+    } else {
+      this._newCards.slice(0, 3).forEach((card, i) => this._renderUnlockCard(card, 320 + i * 92));
+    }
+
+    this._makeButton(cx, height - 108, 'Play Again', () => this.scene.start('BattleScene'));
+    this._makeButton(cx, height - 44, 'Main Menu', () => this.scene.start('MainMenuScene'));
+  }
+
+  _renderUnlockCard(card, y) {
+    const cx = this.scale.width / 2;
+    this.add.rectangle(cx, y, 340, 80, 0x1a2a4e).setStrokeStyle(2, 0x44ff88);
+
     this.add
-      .text(x, y + 12, `Tier ${card.tier} · ${card.category}`, {
-        fontSize: '12px',
+      .text(cx - 160, y, card.name, {
+        fontSize: MOBILE.bodyFontSize,
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+        wordWrap: { width: 170 },
+      })
+      .setOrigin(0, 0.5);
+
+    this.add
+      .text(cx + 160, y - 10, `Tier ${card.tier}`, {
+        fontSize: '14px',
         fontFamily: 'Arial, sans-serif',
         color: '#aaaaaa',
       })
-      .setOrigin(0.5);
+      .setOrigin(1, 0.5);
 
     this.add
-      .text(x, y + 34, card.flavorText || '', {
-        fontSize: '10px',
+      .text(cx + 160, y + 14, card.category, {
+        fontSize: '14px',
         fontFamily: 'Arial, sans-serif',
-        color: '#888888',
-        wordWrap: { width: 130 },
-        align: 'center',
-        fontStyle: 'italic',
+        color: '#aaaaaa',
       })
-      .setOrigin(0.5);
+      .setOrigin(1, 0.5);
   }
 
   _makeButton(x, y, label, onClick) {
-    const btn = this.add
-      .text(x, y, label, {
-        fontSize: '26px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#ffffff',
-        backgroundColor: '#16213e',
-        padding: { left: 22, right: 22, top: 12, bottom: 12 },
-      })
-      .setOrigin(0.5)
+    const bg = this.add
+      .rectangle(x, y, MOBILE.buttonWidth, MOBILE.buttonHeight, 0x16213e)
+      .setStrokeStyle(2, 0xf0a500)
       .setInteractive({ useHandCursor: true });
 
-    btn.on('pointerover', () => btn.setStyle({ color: '#f0a500' }));
-    btn.on('pointerout', () => btn.setStyle({ color: '#ffffff' }));
-    btn.on('pointerdown', onClick);
+    const text = this.add
+      .text(x, y, label, {
+        fontSize: MOBILE.buttonFontSize,
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+      })
+      .setOrigin(0.5);
 
-    return btn;
+    bg.on('pointerdown', onClick);
+    bg.on('pointerover', () => text.setStyle({ color: '#f0a500' }));
+    bg.on('pointerout', () => text.setStyle({ color: '#ffffff' }));
+
+    return { bg, text };
   }
 }

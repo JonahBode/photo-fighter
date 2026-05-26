@@ -4,6 +4,8 @@
  * Buttons navigate to other scenes.
  */
 
+import { MOBILE } from '../utils/MobileLayout.js';
+
 export default class MainMenuScene extends Phaser.Scene { // eslint-disable-line no-undef
   constructor() {
     super({ key: 'MainMenuScene' });
@@ -13,73 +15,66 @@ export default class MainMenuScene extends Phaser.Scene { // eslint-disable-line
     const { width, height } = this.scale;
     const cx = width / 2;
 
-    // ── Background ────────────────────────────────────────────────────────────
     this.add.rectangle(cx, height / 2, width, height, 0x1a1a2e);
 
-    // Decorative gradient strip
-    this.add.rectangle(cx, 0, width, 8, 0xf0a500).setOrigin(0.5, 0);
-    this.add.rectangle(cx, height, width, 8, 0xf0a500).setOrigin(0.5, 1);
-
-    // ── Title ─────────────────────────────────────────────────────────────────
     this.add
-      .text(cx, 120, '⚔ PHOTO FIGHTER ⚔', {
-        fontSize: '64px',
+      .text(cx, 92, 'PHOTO FIGHTER', {
+        fontSize: '48px',
         fontFamily: 'Arial Black, sans-serif',
         color: '#f0a500',
         stroke: '#000',
-        strokeThickness: 8,
+        strokeThickness: 6,
       })
       .setOrigin(0.5);
 
     this.add
-      .text(cx, 195, 'Upload. Build. Battle.', {
-        fontSize: '22px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#aaaaaa',
-      })
-      .setOrigin(0.5);
-
-    // ── Menu buttons ──────────────────────────────────────────────────────────
-    const buttons = [
-      { label: '▶  Play Battle',      scene: 'BattleScene' },
-      { label: '🃏  Build Deck',        scene: 'DeckBuilderScene' },
-      { label: '📷  Card Creator',      scene: 'CardCreatorScene' },
-      { label: '🏆  Progression',       scene: 'ProgressionScene' },
-    ];
-
-    buttons.forEach(({ label, scene }, i) => {
-      const y = 310 + i * 80;
-      this._makeButton(cx, y, label, () => this.scene.start(scene));
-    });
-
-    // ── Version watermark ─────────────────────────────────────────────────────
-    this.add
-      .text(width - 16, height - 12, 'v0.1.0', {
-        fontSize: '14px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#555555',
-      })
-      .setOrigin(1, 1);
-  }
-
-  // ─── Helper ───────────────────────────────────────────────────────────────────
-
-  _makeButton(x, y, label, onClick) {
-    const btn = this.add
-      .text(x, y, label, {
-        fontSize: '28px',
+      .text(cx, 146, 'Upload. Build. Battle.', {
+        fontSize: '18px',
         fontFamily: 'Arial, sans-serif',
         color: '#ffffff',
-        backgroundColor: '#16213e',
-        padding: { left: 28, right: 28, top: 12, bottom: 12 },
       })
-      .setOrigin(0.5)
+      .setOrigin(0.5);
+
+    this.add
+      .text(cx, 174, 'Create a deck from your photos and duel the AI.', {
+        fontSize: MOBILE.bodyFontSize,
+        fontFamily: 'Arial, sans-serif',
+        color: '#aaaaaa',
+        align: 'center',
+      })
+      .setOrigin(0.5);
+
+    const buttons = [
+      { label: 'Play Battle', scene: 'BattleScene' },
+      { label: 'Build Deck', scene: 'DeckBuilderScene' },
+      { label: 'Card Creator', scene: 'CardCreatorScene' },
+      { label: 'Progression', scene: 'ProgressionScene' },
+    ];
+
+    const startY = height / 2 - 92;
+    buttons.forEach(({ label, scene }, i) => {
+      this._makeButton(cx, startY + i * 70, label, () => this.scene.start(scene));
+    });
+  }
+
+  _makeButton(x, y, label, onClick) {
+    const bg = this.add
+      .rectangle(x, y, 300, 56, 0x16213e)
+      .setStrokeStyle(2, 0xf0a500)
       .setInteractive({ useHandCursor: true });
 
-    btn.on('pointerover', () => btn.setStyle({ color: '#f0a500' }));
-    btn.on('pointerout', () => btn.setStyle({ color: '#ffffff' }));
-    btn.on('pointerdown', onClick);
+    const text = this.add
+      .text(x, y, label, {
+        fontSize: '24px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+      })
+      .setOrigin(0.5);
 
-    return btn;
+    bg.on('pointerdown', onClick);
+    bg.on('pointerover', () => text.setStyle({ color: '#f0a500' }));
+    bg.on('pointerout', () => text.setStyle({ color: '#ffffff' }));
+
+    return { bg, text };
   }
 }
