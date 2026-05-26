@@ -10,11 +10,12 @@ import CardCreatorScene from './scenes/CardCreatorScene.js';
 import DeckBuilderScene from './scenes/DeckBuilderScene.js';
 import BattleScene from './scenes/BattleScene.js';
 import ProgressionScene from './scenes/ProgressionScene.js';
+import { MOBILE } from './utils/MobileLayout.js';
 
 const GameConfig = {
   type: Phaser.AUTO,            // Use WebGL if available, fall back to Canvas
-  width: 1280,
-  height: 720,
+  width: MOBILE.width,
+  height: MOBILE.height,
   backgroundColor: '#1a1a2e',
   parent: 'game-container',     // Mount into the div in index.html
   scene: [
@@ -31,6 +32,7 @@ const GameConfig = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    orientation: Phaser.Scale.PORTRAIT,
   },
 };
 

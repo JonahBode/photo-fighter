@@ -80,7 +80,7 @@ const STARTER_CARDS = [
     critMultiplier: 1.5,
     keywords: [],
     abilities: [],
-    flavorText: '"He showed up. That's basically the job."',
+    flavorText: '"He showed up. That\'s basically the job."',
     category: 'Tank',
     unlocked: true,
   },
