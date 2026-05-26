@@ -18,7 +18,6 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
     this._uploadMode = 'single';
     this._cardNameInput = null;
     this._previewImage = null;
-    this._boundFileInput = null;
   }
 
   create() {
@@ -57,9 +56,35 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
         'border:2px solid #f0a500;background:#1a1a2e;color:#fff;text-align:center;" />'
       );
 
-    this._makeButton(cx, 362, 'Upload Card Image', () => this._triggerUpload('single'));
+    // DOM-based file input styled as button — iOS Safari requires the user to
+    // tap the <input type="file"> element directly; programmatic .click() does
+    // not work on mobile Safari.
+    const fileInputStyle =
+      'display:block;width:300px;height:52px;background:#16213e;color:#fff;' +
+      'border:2px solid #f0a500;border-radius:6px;font-size:18px;' +
+      'font-family:Arial,sans-serif;text-align:center;line-height:52px;' +
+      'cursor:pointer;position:relative;overflow:hidden;';
+    const hiddenInputStyle =
+      'position:absolute;top:0;left:0;width:100%;height:100%;' +
+      'opacity:0;cursor:pointer;font-size:16px;';
+
+    this._uploadDom = this.add.dom(cx, 362).createFromHTML(
+      `<label style="${fileInputStyle}">Upload Card Image` +
+      `<input type="file" accept="image/*" style="${hiddenInputStyle}" /></label>`
+    );
+    this._uploadDom.node.querySelector('input').addEventListener('change', (e) => {
+      this._handleFileChange(e, 'single');
+    });
+
     this._makeButton(cx, 426, 'Save Single Card', () => this._saveCard());
-    this._makeButton(cx, 490, 'Import Tier Screenshot', () => this._triggerUpload('tierBoard'));
+
+    this._tierDom = this.add.dom(cx, 490).createFromHTML(
+      `<label style="${fileInputStyle}">Import Tier Screenshot` +
+      `<input type="file" accept="image/*" style="${hiddenInputStyle}" /></label>`
+    );
+    this._tierDom.node.querySelector('input').addEventListener('change', (e) => {
+      this._handleFileChange(e, 'tierBoard');
+    });
 
     const cards = this._loadCustomCards();
     this._countText = this.add
@@ -95,45 +120,26 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
       .setOrigin(0.5);
 
     this._makeButton(cx, height - 44, 'Back to Menu', () => this.scene.start('MainMenuScene'));
-
-    this._bindFileInput();
   }
 
-  _bindFileInput() {
-    const input = document.getElementById('card-image-upload');
-    if (!input) return;
+  _handleFileChange(e, mode) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
 
-    if (this._boundFileInput) {
-      input.removeEventListener('change', this._boundFileInput);
-    }
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const base64 = evt.target.result;
+      if (mode === 'tierBoard') {
+        this._importTierBoard(base64);
+        return;
+      }
 
-    this._boundFileInput = (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const base64 = evt.target.result;
-        if (this._uploadMode === 'tierBoard') {
-          this._importTierBoard(base64);
-          return;
-        }
-
-        this._pendingImage = base64;
-        this._showImagePreview(this._pendingImage);
-        this._setStatus('Image loaded! Give it a name and save.', '#44ff88');
-      };
-      reader.readAsDataURL(file);
-      input.value = '';
+      this._pendingImage = base64;
+      this._showImagePreview(this._pendingImage);
+      this._setStatus('Image loaded! Give it a name and save.', '#44ff88');
     };
-
-    input.addEventListener('change', this._boundFileInput);
-  }
-
-  _triggerUpload(mode = 'single') {
-    this._uploadMode = mode;
-    const input = document.getElementById('card-image-upload');
-    if (input) input.click();
+    reader.readAsDataURL(file);
+    e.target.value = '';
   }
 
   _showImagePreview(base64) {

@@ -19,6 +19,9 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
     this._selectedIds = new Set();
     this._gridContainer = null;
     this._gridMeta = null;
+    this._statsOverlay = [];
+    this._infoTapped = false;
+    this._isDragging = false;
   }
 
   preload() {
@@ -49,10 +52,19 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
       })
       .setOrigin(0.5);
 
-    const progression = new ProgressionManager();
     const customCards = this._loadCustomCards();
     const allCards = [...STARTER_CARDS, ...customCards];
-    const available = progression.getUnlockedCards(allCards);
+    let available;
+    try {
+      const progression = new ProgressionManager();
+      available = progression.getUnlockedCards(allCards);
+    } catch (e) {
+      console.warn('DeckBuilder: ProgressionManager failed, showing tier 1 cards', e);
+      available = allCards.filter((c) => c.tier === 1 && c.unlocked);
+    }
+    if (!available.length) {
+      available = allCards.filter((c) => c.tier === 1 && c.unlocked);
+    }
 
     const savedDeck = this._loadSavedDeck();
     savedDeck.forEach((id) => this._selectedIds.add(id));
@@ -124,24 +136,27 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
       .setRectangleDropZone(viewportW, viewportH)
       .setInteractive();
 
-    let dragging = false;
     let startY = 0;
     let baseY = 0;
 
     dragZone.on('pointerdown', (pointer) => {
-      dragging = true;
+      this._isDragging = false;
       startY = pointer.y;
       baseY = this._gridContainer.y;
     });
 
     this.input.on('pointermove', (pointer) => {
-      if (!dragging) return;
+      if (Math.abs(pointer.y - startY) > 8) {
+        this._isDragging = true;
+      }
+      if (!this._isDragging) return;
       const nextY = baseY + (pointer.y - startY);
       this._gridContainer.y = Phaser.Math.Clamp(nextY, viewportY + this._gridMeta.minY, viewportY + this._gridMeta.maxY); // eslint-disable-line no-undef
     });
 
     const stopDrag = () => {
-      dragging = false;
+      // reset dragging flag after a short delay so pointerup handlers can read it
+      this.time.delayedCall(50, () => { this._isDragging = false; });
     };
     this.input.on('pointerup', stopDrag);
     this.input.on('pointerupoutside', stopDrag);
@@ -182,9 +197,43 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
       })
       .setOrigin(0.5);
 
-    items.push(nameText, tierText);
+    // Info button — top-left corner of card
+    const infoBtnX = x + 10;
+    const infoBtnY = y + 10;
+    const infoBtn = this.add
+      .rectangle(infoBtnX, infoBtnY, 18, 18, 0x223355)
+      .setStrokeStyle(1, 0x5588bb)
+      .setInteractive({ useHandCursor: true });
+    const infoBtnLabel = this.add
+      .text(infoBtnX, infoBtnY, 'ℹ', {
+        fontSize: '11px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#88ccff',
+      })
+      .setOrigin(0.5);
+
+    items.push(nameText, tierText, infoBtn, infoBtnLabel);
+
+    infoBtn.on('pointerdown', () => {
+      this._infoTapped = true;
+    });
+    infoBtn.on('pointerup', () => {
+      if (this._infoTapped && !this._isDragging) {
+        this._infoTapped = false;
+        this._showStatsOverlay(card);
+      } else {
+        this._infoTapped = false;
+      }
+    });
 
     bg.on('pointerdown', () => {
+      this._infoTapped = false; // reset — info button sets its own flag
+    });
+    bg.on('pointerup', () => {
+      if (this._isDragging || this._infoTapped) {
+        this._infoTapped = false;
+        return;
+      }
       if (this._selectedIds.has(card.id)) {
         this._selectedIds.delete(card.id);
         bg.setStrokeStyle(2, 0x444466);
@@ -200,6 +249,159 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
     });
 
     this._gridContainer.add(items);
+  }
+
+  _showStatsOverlay(card) {
+    this._hideStatsOverlay();
+    const { width, height } = this.scale;
+    const cx = width / 2;
+    const objs = [];
+
+    // Semi-transparent dark backdrop
+    const darkBg = this.add
+      .rectangle(cx, height / 2, width, height, 0x000000, 0.78)
+      .setInteractive()
+      .setDepth(10);
+    darkBg.on('pointerdown', () => this._hideStatsOverlay());
+    objs.push(darkBg);
+
+    // Panel
+    const panelW = 340;
+    const panelH = 480;
+    const panelY = height / 2;
+    const panelTop = panelY - panelH / 2;
+    objs.push(
+      this.add
+        .rectangle(cx, panelY, panelW, panelH, 0x1a1a3e)
+        .setStrokeStyle(2, 0xffffff)
+        .setDepth(10)
+    );
+
+    // Card name
+    objs.push(
+      this.add
+        .text(cx, panelTop + 32, card.name, {
+          fontSize: '24px',
+          fontFamily: 'Arial Black, sans-serif',
+          color: '#f0a500',
+        })
+        .setOrigin(0.5)
+        .setDepth(10)
+    );
+
+    // Category + Tier
+    objs.push(
+      this.add
+        .text(cx, panelTop + 64, `${card.category || ''}  •  Tier ${card.tier}`, {
+          fontSize: '16px',
+          fontFamily: 'Arial, sans-serif',
+          color: '#aaaaaa',
+        })
+        .setOrigin(0.5)
+        .setDepth(10)
+    );
+
+    // Stats rows
+    const statsLeft = cx - 120;
+    const stats = [
+      `❤ HP: ${card.hp}`,
+      `⚔ ATK: ${card.attack[0]} – ${card.attack[1]}`,
+      `🛡 DEF: ${card.defense}`,
+      `⚡ SPD: ${card.speed}`,
+      `💎 Cost: ${card.cost}`,
+      `🎯 Crit: ${Math.round((card.critChance || 0) * 100)}%`,
+    ];
+    let yPos = panelTop + 100;
+    stats.forEach((line) => {
+      objs.push(
+        this.add
+          .text(statsLeft, yPos, line, {
+            fontSize: '16px',
+            fontFamily: 'Arial, sans-serif',
+            color: '#ffffff',
+          })
+          .setOrigin(0, 0.5)
+          .setDepth(10)
+      );
+      yPos += 28;
+    });
+
+    // Keywords
+    if (card.keywords && card.keywords.length) {
+      objs.push(
+        this.add
+          .text(cx, yPos + 4, card.keywords.join(' · '), {
+            fontSize: '16px',
+            fontFamily: 'Arial, sans-serif',
+            color: '#f0a500',
+          })
+          .setOrigin(0.5)
+          .setDepth(10)
+      );
+      yPos += 32;
+    }
+
+    // Flavor text
+    if (card.flavorText) {
+      objs.push(
+        this.add
+          .text(cx, yPos + 8, card.flavorText, {
+            fontSize: '14px',
+            fontFamily: 'Arial, sans-serif',
+            color: '#aaaaaa',
+            fontStyle: 'italic',
+            wordWrap: { width: panelW - 40 },
+            align: 'center',
+          })
+          .setOrigin(0.5)
+          .setDepth(10)
+      );
+      yPos += 48;
+    }
+
+    // Abilities
+    if (card.abilities && card.abilities.length) {
+      card.abilities.forEach((ab) => {
+        objs.push(
+          this.add
+            .text(cx, yPos + 8, ab, {
+              fontSize: '14px',
+              fontFamily: 'Arial, sans-serif',
+              color: '#ffffff',
+              wordWrap: { width: panelW - 40 },
+              align: 'center',
+            })
+            .setOrigin(0.5)
+            .setDepth(10)
+        );
+        yPos += 44;
+      });
+    }
+
+    // Close button — anchored to bottom of panel
+    const closeBtnY = panelY + panelH / 2 - 34;
+    const closeBtn = this.add
+      .rectangle(cx, closeBtnY, panelW - 20, 52, 0x2a2a5e)
+      .setStrokeStyle(2, 0xf0a500)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(10);
+    const closeBtnText = this.add
+      .text(cx, closeBtnY, '✕ Close', {
+        fontSize: '22px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#f0a500',
+      })
+      .setOrigin(0.5)
+      .setDepth(10);
+    closeBtn.on('pointerdown', () => this._hideStatsOverlay());
+    objs.push(closeBtn, closeBtnText);
+
+    this._statsOverlay = objs;
+  }
+
+  _hideStatsOverlay() {
+    this._statsOverlay.forEach((obj) => obj.destroy());
+    this._statsOverlay = [];
   }
 
   _saveDeck() {
