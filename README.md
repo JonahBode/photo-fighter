@@ -36,6 +36,10 @@ npm run preview    # serve the built files locally
 
 ## 🃏 How the card system works
 
+The shipped starter pool now includes **34 cards across tiers 1–3** (expanded
+from the original 20-card pool), with Tier 1 available immediately and higher
+tiers unlocked through progression.
+
 Every card has the following fields:
 
 | Field | Description |
@@ -87,6 +91,23 @@ Speed determines turn order; ties are resolved randomly.
 
 ---
 
+## 🎮 UI & UX updates
+
+### Battle scene
+
+- Card images are shown on both field cards and hand cards.
+- Selected hand cards visually lift when tapped.
+- Layout labels are shown for **ENEMY FIELD**, **YOUR FIELD**, and **YOUR HAND**.
+- Forfeit uses a confirmation overlay (**Yes / Cancel**) instead of instant exit.
+- A helper hint is shown during battle: *Tap to select · Tap again to play*.
+
+### Deck builder scene
+
+- Card images are shown in the card grid tiles.
+- Card tiles are 110px tall to fit image + name + tier/cost info cleanly.
+
+---
+
 ## 🗂 Project structure
 
 ```
@@ -111,7 +132,7 @@ photo-fighter/
 │   │   ├── ProgressionManager.js# Win/loss tracking, card unlocks
 │   │   └── RandomUtils.js       # Seeded RNG, shuffles, crit rolls
 │   └── data/
-│       ├── starterCards.js      # 20 starter cards across tiers 1–3
+│       ├── starterCards.js      # 34 starter cards across tiers 1–3
 │       └── keywords.js          # Keyword definitions and descriptions
 └── assets/                 # Placeholder for custom images/fonts
 ```
