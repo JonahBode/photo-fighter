@@ -476,14 +476,6 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
         .setStrokeStyle(selected ? 3 : 2, selected ? 0xf0a500 : 0x4444aa)
         .setInteractive({ useHandCursor: true });
 
-      // Card image
-      const items = [bg, name, cost, atk, keywords];
-      if (this.textures.exists(card.id)) {
-        const img = this.add.image(x, cardY - 50, card.id).setDisplaySize(HAND_CARD_W - 6, 52);
-        items.splice(1, 0, img);
-      }
-      this._handRow.container.add(items);
-
       const name = this.add.text(x, cardY - 16, card.name, {
         fontSize: '11px',
         fontFamily: 'Arial, sans-serif',
