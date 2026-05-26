@@ -6,7 +6,7 @@
  * Unlock rules:
  *  - After each WIN: unlock 1–2 random cards from the next tier.
  *  - Every 3 LOSSES: unlock 1 random card as a consolation reward.
- *  - Tiers 1–5 (Tier 1 = common → Tier 5 = legendary).
+ *  - Tiers 1+ (Tier 1 = basic row; higher tiers unlock progressively).
  */
 
 import { pickRandom } from './RandomUtils.js';
@@ -51,7 +51,7 @@ export default class ProgressionManager {
       this.state.consolationCounter = 0;
 
       // Unlock 1–2 random cards from the next tier
-      const nextTier = Math.min(this.state.highestTierReached + 1, 5);
+      const nextTier = Math.min(this.state.highestTierReached + 1, this._maxTier(allCards));
       const candidates = this._getLockedCardsOfTier(allCards, nextTier);
       const count = candidates.length > 1 ? Math.floor(Math.random() * 2) + 1 : Math.min(1, candidates.length);
       const unlocks = pickRandom(candidates, count);
@@ -147,9 +147,14 @@ export default class ProgressionManager {
     const allUnlocked = currentTierCards.every(
       (c) => c.unlocked || this.state.unlockedCardIds.includes(c.id)
     );
-    if (allUnlocked && this.state.highestTierReached < 5) {
+    if (allUnlocked && this.state.highestTierReached < this._maxTier(allCards)) {
       this.state.highestTierReached += 1;
     }
+  }
+
+  _maxTier(allCards) {
+    if (!allCards.length) return 1;
+    return allCards.reduce((maxTier, card) => Math.max(maxTier, card.tier || 1), 1);
   }
 
   _save() {

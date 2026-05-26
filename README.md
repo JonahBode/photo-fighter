@@ -46,7 +46,7 @@ Every card has the following fields:
 |---|---|
 | `name` | Display name |
 | `image` | Base64 data URL (user upload) or placeholder URL |
-| `tier` | 1 (Common) → 5 (Legendary) |
+| `tier` | 1+ (bottom/basic row is tier 1, rows above are higher tiers) |
 | `cost` | Mana cost to play (1–7) |
 | `hp` | Health points (10–50) |
 | `attack` | Damage range `[min, max]` |
@@ -79,6 +79,17 @@ finalDamage = max(1, rawDamage − defender.defense)
 ```
 
 Speed determines turn order; ties are resolved randomly.
+
+### Importing a tier-list screenshot
+
+You can now import a full tier-board screenshot directly in **Card Creator**:
+
+1. Tap **Import Tier Screenshot** and choose your image.
+2. Enter row/column counts and crop percentages when prompted.
+3. The importer slices cards from the board grid.
+4. **Bottom row** imports as **Tier 1 (unlocked)**; each row above imports as a higher locked tier.
+
+After import, go to **Build Deck** to pick unlocked cards and save a playable deck.
 
 ---
 
