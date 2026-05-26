@@ -21,13 +21,23 @@ const STORAGE_KEY_DECK = 'photoFighterPlayerDeck';
 const STORAGE_KEY_CUSTOM = 'photoFighterCustomCards';
 
 const HAND_CARD_W = 90;
-const HAND_CARD_H = 130;
+const HAND_CARD_H = 160;
 const FIELD_CARD_W = 100;
-const FIELD_CARD_H = 130;
+const FIELD_CARD_H = 150;
 
 export default class BattleScene extends Phaser.Scene { // eslint-disable-line no-undef
   constructor() {
     super({ key: 'BattleScene' });
+  }
+
+  preload() {
+    // Load all card images dynamically so they're available for rendering
+    const allCards = this._getAllCards();
+    allCards.forEach((card) => {
+      if (card.image && !this.textures.exists(card.id)) {
+        this.load.image(card.id, card.image);
+      }
+    });
   }
 
   create() {
@@ -203,6 +213,7 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
   }
 
   _buildUI(width, height) {
+    // ── Background panels ──
     this.add.rectangle(width / 2, 60, width - 20, 112, 0x16213e, 0.55).setStrokeStyle(2, 0x2a3b56);
     this.add.rectangle(width / 2, 202, width - 20, 160, 0x16213e, 0.35).setStrokeStyle(1, 0x2a3b56);
     this.add.rectangle(width / 2, 302, width - 20, 40, 0x16213e, 0.35);
@@ -210,6 +221,7 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
     this.add.rectangle(width / 2, 534, width - 20, 72, 0x16213e, 0.55).setStrokeStyle(2, 0x2a3b56);
     this.add.rectangle(width / 2, 658, width - 20, 170, 0x16213e, 0.35).setStrokeStyle(1, 0x2a3b56);
 
+    // ── AI hero area ──
     this._aiHpLabel = this.add.text(24, 20, '', {
       fontSize: '18px',
       fontFamily: 'Arial, sans-serif',
@@ -231,12 +243,36 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
       color: '#cccccc',
     }).setOrigin(1, 0);
 
+    // ── Section labels ──
+    this.add.text(16, 108, 'ENEMY FIELD', {
+      fontSize: '11px',
+      fontFamily: 'Arial Black, sans-serif',
+      color: '#ff6644',
+      alpha: 0.85,
+    });
+
+    this.add.text(16, 312, 'YOUR FIELD', {
+      fontSize: '11px',
+      fontFamily: 'Arial Black, sans-serif',
+      color: '#44aaff',
+      alpha: 0.85,
+    });
+
+    this.add.text(16, 560, 'YOUR HAND', {
+      fontSize: '11px',
+      fontFamily: 'Arial Black, sans-serif',
+      color: '#ffffff',
+      alpha: 0.75,
+    });
+
+    // ── Turn label ──
     this._turnText = this.add.text(width / 2, 302, '', {
       fontSize: '28px',
       fontFamily: 'Arial Black, sans-serif',
       color: '#f0a500',
     }).setOrigin(0.5);
 
+    // ── Player hero area ──
     this._playerHpLabel = this.add.text(24, 506, '', {
       fontSize: '18px',
       fontFamily: 'Arial, sans-serif',
@@ -254,23 +290,25 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
 
     this._playButton = this._makeButton(316, 552, 64, 48, 'Play', () => this._playSelectedCard(), 0x16213e, '18px');
 
+    // ── Card rows ──
     this._aiFieldRow = this._createScrollableRow(16, 122, 358, 160);
     this._playerFieldRow = this._createScrollableRow(16, 326, 358, 160);
     this._handRow = this._createScrollableRow(16, 574, 358, 170);
 
+    // ── Play hint ──
+    this.add.text(width / 2, 756, 'Tap to select · Tap again to play', {
+      fontSize: '11px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#888888',
+    }).setOrigin(0.5);
+
+    // ── End Turn button ──
     this._endTurnButton = this._makeButton(width / 2, 812, width - 24, MOBILE.buttonHeight, 'End Turn', () => this._endPlayerTurn(), 0xf0a500, '24px', '#1a1a2e');
 
-    this._forfeitText = this.add.text(width - 12, height - 10, 'Forfeit', {
-      fontSize: MOBILE.bodyFontSize,
-      fontFamily: 'Arial, sans-serif',
-      color: '#aaaaaa',
-    }).setOrigin(1, 1).setInteractive({ useHandCursor: true });
+    // ── Forfeit button (top-left, clearly visible) ──
+    this._forfeitBtn = this._makeButton(44, 14, 80, 28, '⚑ Forfeit', () => this._showForfeitConfirm(), 0x2a1a1a, '13px', '#ff8888');
 
-    this._forfeitText.on('pointerdown', () => {
-      this._progression.recordMatch('loss', this._getAllCards());
-      this.scene.start('MainMenuScene');
-    });
-
+    // ── Combat log ──
     this._logLines = [];
     this._logToggle = this.add.text(width - 12, 10, '📋 Log', {
       fontSize: MOBILE.bodyFontSize,
@@ -301,6 +339,49 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
     this._logOverlay.setInteractive(new Phaser.Geom.Rectangle(0, 0, width, height), Phaser.Geom.Rectangle.Contains); // eslint-disable-line no-undef
     this._logOverlay.on('pointerdown', () => this._toggleLog(false));
     this._logToggle.on('pointerdown', () => this._toggleLog(!this._logOverlayVisible));
+
+    // ── Forfeit confirm overlay (hidden by default) ──
+    this._forfeitOverlay = this.add.container(0, 0).setDepth(20).setVisible(false);
+    const fBg = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.8);
+    const fPanel = this.add.rectangle(width / 2, height / 2, width - 60, 160, 0x1a0a0a, 0.95)
+      .setStrokeStyle(2, 0xff6644);
+    const fTitle = this.add.text(width / 2, height / 2 - 44, 'Forfeit the battle?', {
+      fontSize: '22px',
+      fontFamily: 'Arial Black, sans-serif',
+      color: '#ff8888',
+    }).setOrigin(0.5);
+    const fSub = this.add.text(width / 2, height / 2 - 12, 'This counts as a loss.', {
+      fontSize: '14px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#aaaaaa',
+    }).setOrigin(0.5);
+
+    // Yes button
+    const fYesBg = this.add.rectangle(width / 2 - 70, height / 2 + 40, 120, 40, 0x660000)
+      .setStrokeStyle(2, 0xff6644).setInteractive({ useHandCursor: true });
+    const fYesTxt = this.add.text(width / 2 - 70, height / 2 + 40, 'Yes, Forfeit', {
+      fontSize: '15px', fontFamily: 'Arial, sans-serif', color: '#ff8888',
+    }).setOrigin(0.5);
+    fYesBg.on('pointerdown', () => {
+      this._progression.recordMatch('loss', this._getAllCards());
+      this.scene.start('MainMenuScene');
+    });
+
+    // Cancel button
+    const fCancelBg = this.add.rectangle(width / 2 + 70, height / 2 + 40, 100, 40, 0x163016)
+      .setStrokeStyle(2, 0x44ff88).setInteractive({ useHandCursor: true });
+    const fCancelTxt = this.add.text(width / 2 + 70, height / 2 + 40, 'Cancel', {
+      fontSize: '15px', fontFamily: 'Arial, sans-serif', color: '#44ff88',
+    }).setOrigin(0.5);
+    fCancelBg.on('pointerdown', () => {
+      this._forfeitOverlay.setVisible(false);
+    });
+
+    this._forfeitOverlay.add([fBg, fPanel, fTitle, fSub, fYesBg, fYesTxt, fCancelBg, fCancelTxt]);
+  }
+
+  _showForfeitConfirm() {
+    this._forfeitOverlay.setVisible(true);
   }
 
   _refreshUI() {
@@ -348,22 +429,28 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
       const bg = this.add.rectangle(x, y, FIELD_CARD_W, FIELD_CARD_H, 0x0a1628)
         .setStrokeStyle(2, parseInt(borderColor.replace('#', ''), 16));
 
-      const name = this.add.text(x, y - 45, card.name, {
-        fontSize: '14px',
+      // Card image
+      if (this.textures.exists(card.id)) {
+        const img = this.add.image(x, y - 38, card.id).setDisplaySize(FIELD_CARD_W - 6, 56);
+        row.container.add(img);
+      }
+
+      const name = this.add.text(x, y + 18, card.name, {
+        fontSize: '12px',
         fontFamily: 'Arial, sans-serif',
         color: '#ffffff',
         wordWrap: { width: FIELD_CARD_W - 8 },
         align: 'center',
       }).setOrigin(0.5);
 
-      const hp = this.add.text(x, y + 6, `HP ${Math.max(0, card.currentHp)}`, {
-        fontSize: '16px',
+      const hp = this.add.text(x, y + 38, `HP ${Math.max(0, card.currentHp)}`, {
+        fontSize: '14px',
         fontFamily: 'Arial, sans-serif',
         color: '#ffffff',
       }).setOrigin(0.5);
 
-      const keywords = this.add.text(x, y + 30, card.keywords.join(', ') || '-', {
-        fontSize: '12px',
+      const keywords = this.add.text(x, y + 56, card.keywords.join(', ') || '-', {
+        fontSize: '10px',
         fontFamily: 'Arial, sans-serif',
         color: '#f0a500',
         wordWrap: { width: FIELD_CARD_W - 8 },
@@ -384,32 +471,41 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
       const x = HAND_CARD_W / 2 + i * (HAND_CARD_W + 10);
       const y = this._handRow.h / 2;
       const selected = this._selectedHandIndex === i;
-      const bg = this.add.rectangle(x, y, HAND_CARD_W, HAND_CARD_H, 0x16213e)
-        .setStrokeStyle(2, selected ? 0xf0a500 : 0x4444aa)
+      const cardY = selected ? y - 8 : y; // lift selected card
+      const bg = this.add.rectangle(x, cardY, HAND_CARD_W, HAND_CARD_H, selected ? 0x1e2e4e : 0x16213e)
+        .setStrokeStyle(selected ? 3 : 2, selected ? 0xf0a500 : 0x4444aa)
         .setInteractive({ useHandCursor: true });
 
-      const name = this.add.text(x, y - 42, card.name, {
-        fontSize: '13px',
+      // Card image
+      const items = [bg, name, cost, atk, keywords];
+      if (this.textures.exists(card.id)) {
+        const img = this.add.image(x, cardY - 50, card.id).setDisplaySize(HAND_CARD_W - 6, 52);
+        items.splice(1, 0, img);
+      }
+      this._handRow.container.add(items);
+
+      const name = this.add.text(x, cardY - 16, card.name, {
+        fontSize: '11px',
         fontFamily: 'Arial, sans-serif',
         color: '#ffffff',
         wordWrap: { width: HAND_CARD_W - 8 },
         align: 'center',
       }).setOrigin(0.5);
 
-      const cost = this.add.text(x, y - 12, `Cost ${card.cost}`, {
-        fontSize: '12px',
+      const cost = this.add.text(x, cardY + 8, `Cost ${card.cost}`, {
+        fontSize: '11px',
         fontFamily: 'Arial, sans-serif',
         color: '#44aaff',
       }).setOrigin(0.5);
 
-      const atk = this.add.text(x, y + 10, `ATK ${card.attack[0]}-${card.attack[1]}`, {
-        fontSize: '12px',
+      const atk = this.add.text(x, cardY + 26, `ATK ${card.attack[0]}-${card.attack[1]}`, {
+        fontSize: '11px',
         fontFamily: 'Arial, sans-serif',
         color: '#ffffff',
       }).setOrigin(0.5);
 
-      const keywords = this.add.text(x, y + 36, card.keywords.join(', ') || '-', {
-        fontSize: '11px',
+      const keywords = this.add.text(x, cardY + 50, card.keywords.join(', ') || '-', {
+        fontSize: '10px',
         fontFamily: 'Arial, sans-serif',
         color: '#f0a500',
         wordWrap: { width: HAND_CARD_W - 8 },
@@ -425,7 +521,11 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
         this._renderHand();
       });
 
-      this._handRow.container.add([bg, name, cost, atk, keywords]);
+      const items = [bg, name, cost, atk, keywords];
+      if (this.textures.exists(card.id)) {
+        items.push(this.add.image(x, cardY - 50, card.id).setDisplaySize(HAND_CARD_W - 6, 52));
+      }
+      this._handRow.container.add(items);
     });
 
     this._clampScrollRow(this._handRow, hand.length * (HAND_CARD_W + 10) - 10);
@@ -451,15 +551,18 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
     let dragging = false;
     let startX = 0;
     let baseX = x;
+    let dragDist = 0;
 
     dragZone.on('pointerdown', (pointer) => {
       dragging = true;
+      dragDist = 0;
       startX = pointer.x;
       baseX = row.container.x;
     });
 
     this.input.on('pointermove', (pointer) => {
       if (!dragging) return;
+      dragDist += Math.abs(pointer.velocity.x);
       const nextX = baseX + (pointer.x - startX);
       row.container.x = Phaser.Math.Clamp(nextX, row.minX, row.maxX); // eslint-disable-line no-undef
     });
