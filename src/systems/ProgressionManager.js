@@ -169,7 +169,12 @@ export default class ProgressionManager {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        return { ...defaultState(), ...JSON.parse(raw) };
+        const merged = { ...defaultState(), ...JSON.parse(raw) };
+        // Defensive: ensure unlockedCardIds is always an array
+        if (!Array.isArray(merged.unlockedCardIds)) {
+          merged.unlockedCardIds = [];
+        }
+        return merged;
       }
     } catch (e) {
       console.warn('ProgressionManager: could not load from localStorage', e);
