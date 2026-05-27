@@ -5,7 +5,6 @@
  */
 
 import STARTER_CARDS from '../data/starterCards.js';
-import ProgressionManager from '../systems/ProgressionManager.js';
 import { MOBILE } from '../utils/MobileLayout.js';
 
 const STORAGE_KEY_DECK = 'photoFighterPlayerDeck';
@@ -26,9 +25,8 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
 
   preload() {
     // Load all card images so they display in the grid
-    const customCards = this._loadCustomCards();
-    const allCards = [...STARTER_CARDS, ...customCards];
-    allCards.forEach((card) => {
+    const availableCards = this._loadAvailableCards();
+    availableCards.forEach((card) => {
       if (card.image && !this.textures.exists(card.id)) {
         this.load.image(card.id, card.image);
       }
@@ -52,20 +50,7 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
       })
       .setOrigin(0.5);
 
-    const customCards = this._loadCustomCards();
-    const allCards = [...STARTER_CARDS, ...customCards];
-    let available;
-    try {
-      const progression = new ProgressionManager();
-      available = progression.getUnlockedCards(allCards);
-    } catch (e) {
-      console.warn('DeckBuilder: ProgressionManager failed, showing tier 1 cards', e);
-      available = allCards.filter((c) => c.unlocked === true || c.tier === 1);
-    }
-    if (!available.length) {
-      console.warn('DeckBuilder: getUnlockedCards returned 0 cards, using defensive fallback');
-      available = allCards.filter((c) => c.unlocked === true || c.tier === 1);
-    }
+    const available = this._loadAvailableCards();
 
     const savedDeck = this._loadSavedDeck();
     savedDeck.forEach((id) => this._selectedIds.add(id));
@@ -78,8 +63,6 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
       })
       .setOrigin(0.5);
 
-    this._renderCardGrid(available);
-
     this._statusText = this.add
       .text(cx, height - 172, '', {
         fontSize: MOBILE.bodyFontSize,
@@ -89,6 +72,11 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
         align: 'center',
       })
       .setOrigin(0.5);
+
+    this._renderCardGrid(available);
+    if (!available.length) {
+      this._setStatus('No cards yet! Go to Card Creator to add your first card.');
+    }
 
     this._makeButton(cx, height - 108, 'Save Deck', () => this._saveDeck());
     this._makeButton(cx, height - 44, 'Back', () => this.scene.start('MainMenuScene'));
@@ -117,7 +105,7 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
       this._renderMiniCard(card, x, y, cardW, cardH);
     });
 
-    const rowCount = Math.ceil(cards.length / cols);
+    const rowCount = Math.max(1, Math.ceil(cards.length / cols));
     const contentHeight = rowCount * (cardH + gap) - gap;
     this._gridMeta = {
       viewportY,
@@ -441,6 +429,27 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
     } catch {
       return [];
     }
+  }
+
+  _loadAvailableCards() {
+    const starterCards = STARTER_CARDS.filter((card) => card.tier === 1 || card.unlocked === true);
+    let customCards = [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_CUSTOM);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) {
+        customCards = parsed.map((card) => ({ ...card, unlocked: true }));
+      }
+    } catch {
+      customCards = [];
+    }
+
+    const deduped = new Map();
+    [...starterCards, ...customCards].forEach((card) => {
+      if (!card || !card.id) return;
+      deduped.set(card.id, card);
+    });
+    return [...deduped.values()];
   }
 
   _setStatus(msg, color = '#ffffff') {
