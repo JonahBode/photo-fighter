@@ -30,14 +30,27 @@ const FIELD_CARD_H = 150;
 export default class BattleScene extends Phaser.Scene { // eslint-disable-line no-undef
   constructor() {
     super({ key: 'BattleScene' });
+    this._allCardsCache = null;
+    this._failedTextureKeys = new Set();
   }
 
   preload() {
+    this._failedTextureKeys = new Set();
+    this.load.on('loaderror', (file) => {
+      if (file && file.key) {
+        this._failedTextureKeys.add(file.key);
+      }
+    });
+
     // Load all card images dynamically so they're available for rendering
-    const allCards = this._getAllCards();
+    const allCards = this._getAllCards(true);
     allCards.forEach((card) => {
       if (card.image && !this.textures.exists(card.id)) {
-        this.load.image(card.id, card.image);
+        try {
+          this.load.image(card.id, card.image);
+        } catch (e) {
+          this._failedTextureKeys.add(card.id);
+        }
       }
     });
   }
@@ -48,7 +61,7 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x0d1b2a);
 
-    const allCards = this._getAllCards();
+    const allCards = this._getAllCards(true);
     if (!allCards.length) {
       this._showFallbackState('No valid cards found. Open Card Creator to import cards safely.');
       return;
@@ -655,14 +668,20 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
     return { bg, text };
   }
 
-  _getAllCards() {
+  _getAllCards(useCache = true) {
+    if (useCache && Array.isArray(this._allCardsCache)) {
+      return this._allCardsCache;
+    }
+
     const deduped = new Map();
     [...STARTER_CARDS, ...loadCustomCardsFromStorage()]
       .filter(isRenderableCard)
       .forEach((card) => {
         deduped.set(card.id, card);
       });
-    return [...deduped.values()];
+    const cards = [...deduped.values()];
+    this._allCardsCache = cards;
+    return cards;
   }
 
   _buildPlayerDeck(allCards) {
