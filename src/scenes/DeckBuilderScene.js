@@ -24,14 +24,27 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
     this._statsOverlay = [];
     this._infoTapped = false;
     this._isDragging = false;
+    this._availableCardsCache = null;
+    this._failedTextureKeys = new Set();
   }
 
   preload() {
+    this._failedTextureKeys = new Set();
+    this.load.on('loaderror', (file) => {
+      if (file && file.key) {
+        this._failedTextureKeys.add(file.key);
+      }
+    });
+
     // Load all card images so they display in the grid
-    const availableCards = this._loadAvailableCards();
+    const availableCards = this._loadAvailableCards(true);
     availableCards.forEach((card) => {
       if (card.image && !this.textures.exists(card.id)) {
-        this.load.image(card.id, card.image);
+        try {
+          this.load.image(card.id, card.image);
+        } catch (e) {
+          this._failedTextureKeys.add(card.id);
+        }
       }
     });
   }
@@ -53,10 +66,15 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
       })
       .setOrigin(0.5);
 
-    const available = this._loadAvailableCards();
+    const available = this._loadAvailableCards(true);
 
+    const availableIdSet = new Set(available.map((card) => card.id));
     const savedDeck = this._loadSavedDeck();
-    savedDeck.forEach((id) => this._selectedIds.add(id));
+    savedDeck.forEach((id) => {
+      if (availableIdSet.has(id)) {
+        this._selectedIds.add(id);
+      }
+    });
 
     this._deckCountText = this.add
       .text(cx, 84, this._deckCountLabel(), {
@@ -85,6 +103,8 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
         align: 'center',
       }).setOrigin(0.5);
       this._setStatus('No cards yet! Go to Card Creator to add your first card.');
+    } else if (this._failedTextureKeys.size > 0) {
+      this._setStatus('Some card images failed to load. Stats and deck selection still work.', '#f0a500');
     }
 
     this._makeButton(cx, height - 108, 'Save Deck', () => this._saveDeck());
@@ -423,13 +443,19 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
   _loadSavedDeck() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY_DECK);
-      return raw ? JSON.parse(raw) : [];
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((id) => typeof id === 'string' && id.trim());
     } catch {
       return [];
     }
   }
 
-  _loadAvailableCards() {
+  _loadAvailableCards(useCache = true) {
+    if (useCache && Array.isArray(this._availableCardsCache)) {
+      return this._availableCardsCache;
+    }
+
     const starterCards = STARTER_CARDS
       .filter((card) => card.tier === 1 || card.unlocked === true)
       .filter(isRenderableCard);
@@ -442,7 +468,9 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
       if (!card || !card.id) return;
       deduped.set(card.id, card);
     });
-    return [...deduped.values()];
+    const cards = [...deduped.values()];
+    this._availableCardsCache = cards;
+    return cards;
   }
 
   _setStatus(msg, color = '#ffffff') {

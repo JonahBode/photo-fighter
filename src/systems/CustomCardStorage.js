@@ -14,6 +14,12 @@ function clampInt(value, min, max) {
   return Math.min(max, Math.max(min, n));
 }
 
+function clampNumber(value, min, max, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
 function normalizeRange(value) {
   if (!Array.isArray(value) || value.length !== 2) return undefined;
   const first = Number(value[0]);
@@ -30,6 +36,15 @@ function normalizeStringArray(value) {
     .filter((v) => typeof v === 'string')
     .map((v) => v.trim())
     .filter(Boolean);
+}
+
+function normalizeImage(value) {
+  if (typeof value !== 'string') return FALLBACK_IMAGE_DATA;
+  const image = value.trim();
+  if (!image) return FALLBACK_IMAGE_DATA;
+  if (image.startsWith('data:image/')) return image;
+  if (image.startsWith('http://') || image.startsWith('https://')) return image;
+  return FALLBACK_IMAGE_DATA;
 }
 
 function makeUniqueId(rawId, usedIds, index) {
@@ -67,11 +82,16 @@ function normalizeCustomCards(cards) {
         typeof raw.name === 'string' && raw.name.trim()
           ? raw.name.trim()
           : `Custom Card ${normalized.length + 1}`,
-      image:
-        typeof raw.image === 'string' && raw.image.trim() ? raw.image.trim() : FALLBACK_IMAGE_DATA,
+      image: normalizeImage(raw.image),
       tier,
       unlocked,
+      cost: clampInt(raw.cost ?? 1, 1, 7),
+      hp: clampInt(raw.hp ?? 10, 1, 100),
       attack: normalizeRange(raw.attack),
+      defense: clampInt(raw.defense ?? 0, 0, 20),
+      speed: clampInt(raw.speed ?? 5, 1, 10),
+      critChance: clampNumber(raw.critChance, 0, 1, 0.1),
+      critMultiplier: clampNumber(raw.critMultiplier, 1, 5, 1.5),
       category:
         typeof raw.category === 'string' && raw.category.trim() ? raw.category.trim() : 'Custom',
       keywords: normalizeStringArray(raw.keywords),
@@ -84,27 +104,49 @@ function normalizeCustomCards(cards) {
   return normalized;
 }
 
+function safeStorageRead() {
+  try {
+    return localStorage.getItem(STORAGE_KEY_CUSTOM);
+  } catch {
+    return null;
+  }
+}
+
+function safeStorageWrite(cards) {
+  try {
+    localStorage.setItem(STORAGE_KEY_CUSTOM, JSON.stringify(cards));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function parseStoredCards(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export function saveCustomCardsToStorage(cards) {
   const normalized = normalizeCustomCards(cards);
-  localStorage.setItem(STORAGE_KEY_CUSTOM, JSON.stringify(normalized));
+  safeStorageWrite(normalized);
   return normalized;
 }
 
 export function loadCustomCardsFromStorage() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_CUSTOM);
-    const parsed = raw ? JSON.parse(raw) : [];
-    const normalized = normalizeCustomCards(parsed);
+  const raw = safeStorageRead();
+  const parsed = parseStoredCards(raw);
+  const normalized = normalizeCustomCards(parsed);
 
-    if (!raw || JSON.stringify(parsed) !== JSON.stringify(normalized)) {
-      localStorage.setItem(STORAGE_KEY_CUSTOM, JSON.stringify(normalized));
-    }
-
-    return normalized;
-  } catch {
-    localStorage.setItem(STORAGE_KEY_CUSTOM, JSON.stringify([]));
-    return [];
+  if (!raw || JSON.stringify(parsed) !== JSON.stringify(normalized)) {
+    safeStorageWrite(normalized);
   }
+
+  return normalized;
 }
 
 export function isRenderableCard(card) {
@@ -119,4 +161,3 @@ export function isRenderableCard(card) {
     Number.isFinite(Number(card.attack[1]))
   );
 }
-

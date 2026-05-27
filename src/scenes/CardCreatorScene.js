@@ -13,6 +13,8 @@ import { MOBILE } from '../utils/MobileLayout.js';
 
 const CATEGORIES = ['Tank', 'Assassin', 'Mage', 'Support'];
 const KEYWORD_POOL = ['Taunt', 'Poison', 'Shield', 'Lifesteal', 'Haste', 'Stun'];
+const IMPORT_MAX_CELL_SIZE = 320;
+const IMPORT_IMAGE_QUALITY = 0.8;
 
 export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-line no-undef
   constructor() {
@@ -315,7 +317,9 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
           crop.height
         );
 
-        const imageData = crop.toDataURL('image/webp', 0.88);
+        const compactCrop = this._downscaleCanvas(crop, IMPORT_MAX_CELL_SIZE, IMPORT_MAX_CELL_SIZE);
+        const imageData = this._canvasToImageData(compactCrop);
+        if (!imageData) continue;
         const card = createCard({
           id: `tier_import_${Date.now()}_${row}_${col}_${Math.random().toString(36).slice(2, 6)}`,
           name: `Tier ${tier} Card ${created.length + 1}`,
@@ -340,6 +344,32 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
     }
 
     return created;
+  }
+
+  _downscaleCanvas(canvas, maxW, maxH) {
+    const sourceW = Math.max(1, canvas.width);
+    const sourceH = Math.max(1, canvas.height);
+    const scale = Math.min(1, maxW / sourceW, maxH / sourceH);
+    if (scale >= 1) return canvas;
+
+    const out = document.createElement('canvas');
+    out.width = Math.max(1, Math.floor(sourceW * scale));
+    out.height = Math.max(1, Math.floor(sourceH * scale));
+    const outCtx = out.getContext('2d');
+    outCtx.drawImage(canvas, 0, 0, out.width, out.height);
+    return out;
+  }
+
+  _canvasToImageData(canvas) {
+    try {
+      return canvas.toDataURL('image/webp', IMPORT_IMAGE_QUALITY);
+    } catch {
+      try {
+        return canvas.toDataURL('image/jpeg', IMPORT_IMAGE_QUALITY);
+      } catch {
+        return '';
+      }
+    }
   }
 
   _looksLikeCardCell(ctx, x, y, w, h) {

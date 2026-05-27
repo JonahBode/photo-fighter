@@ -89,6 +89,9 @@ You can now import a full tier-board screenshot directly in **Card Creator**:
 3. The importer slices cards from the board grid.
 4. **Bottom row** imports as **Tier 1 (unlocked)**; each row above imports as a higher locked tier.
 5. Imported entries are validated before saving: malformed cards are repaired with safe defaults (including unique IDs) or skipped if unusable.
+6. Imported card crops are downscaled before storage to reduce localStorage pressure.
+
+If custom-card data or images are corrupted, Battle and Build Deck safely ignore bad entries and continue using starter cards so the game remains playable.
 
 After import, go to **Build Deck** to pick unlocked cards and save a playable deck.
 
