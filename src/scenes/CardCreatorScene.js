@@ -76,7 +76,14 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
       this._handleFileChange(e, 'single');
     });
 
-    this._makeButton(cx, 426, '📋 Paste from Clipboard', () => this._pasteFromClipboard());
+    this._choosePhotoDom = this.add.dom(cx, 426).createFromHTML(
+      `<label style="${fileInputStyle}">📷 Choose Photo` +
+      `<input type="file" accept="image/*" style="${hiddenInputStyle}" /></label>`
+    );
+    this._choosePhotoDom.node.querySelector('input').addEventListener('change', (e) => {
+      this._handleFileChange(e, 'single');
+    });
+
     this._makeButton(cx, 490, 'Save Single Card', () => this._saveCard());
 
     this._tierDom = this.add.dom(cx, 554).createFromHTML(
@@ -199,9 +206,17 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
       category,
       unlocked: true,
     });
+    card.tier = 1;
     card.unlocked = true;
 
-    const cards = this._loadCustomCards();
+    let cards = [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      cards = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      cards = [];
+    }
     cards.push(card);
     this._saveCustomCards(cards);
 
@@ -217,33 +232,6 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
 
     this._countText.setText(`Saved custom cards: ${cards.length}`);
     this._setStatus(`Saved "${card.name}" to your collection.`, '#44ff88');
-  }
-
-  async _pasteFromClipboard() {
-    try {
-      if (!navigator.clipboard || !navigator.clipboard.read) {
-        this._setStatus('Clipboard paste not supported on this browser.', '#ff6644');
-        return;
-      }
-      const items = await navigator.clipboard.read();
-      for (const item of items) {
-        const imageType = item.types.find((t) => t.startsWith('image/'));
-        if (imageType) {
-          const blob = await item.getType(imageType);
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            this._pendingImage = e.target.result;
-            this._showImagePreview(this._pendingImage);
-            this._setStatus('Image pasted! Give it a name and save.', '#44ff88');
-          };
-          reader.readAsDataURL(blob);
-          return;
-        }
-      }
-      this._setStatus('No image found in clipboard.', '#ff6644');
-    } catch (err) {
-      this._setStatus('Could not access clipboard. Try uploading instead.', '#ff6644');
-    }
   }
 
   _importTierBoard(base64) {
