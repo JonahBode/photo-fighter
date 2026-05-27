@@ -4,14 +4,14 @@
  *
  * Rules (from design doc):
  *  - Deck size: 15–20 cards
- *  - Hand size: 5 cards
+ *  - Hand size: 4 cards
  *  - Draw 1 card per turn
  *  - If deck is empty, the player takes escalating fatigue damage
  */
 
 import { shuffleArray } from './RandomUtils.js';
 
-const HAND_SIZE = 5;
+const HAND_SIZE = 4;
 const MIN_DECK_SIZE = 15;
 const MAX_DECK_SIZE = 20;
 

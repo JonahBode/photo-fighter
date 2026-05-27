@@ -20,8 +20,8 @@ import { MOBILE } from '../utils/MobileLayout.js';
 const STORAGE_KEY_DECK = 'photoFighterPlayerDeck';
 const STORAGE_KEY_CUSTOM = 'photoFighterCustomCards';
 
-const HAND_CARD_W = 90;
-const HAND_CARD_H = 160;
+const HAND_CARD_W = 78;
+const HAND_CARD_H = 138;
 const FIELD_CARD_W = 100;
 const FIELD_CARD_H = 150;
 
@@ -108,6 +108,7 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
       resolveAttack(att, def)
     );
     if (aiLog.cardPlayed) {
+      this._aiField.push(createBattleCard(aiLog.cardPlayed));
       this._log(`AI played ${aiLog.cardPlayed.name}.`);
     }
 
@@ -214,13 +215,30 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
   }
 
   _buildUI(width, height) {
+    const compact = height <= 844;
+    const playerPanelY = compact ? 520 : 534;
+    const playerPanelHeight = compact ? 64 : 72;
+    const handPanelY = compact ? 638 : 658;
+    const handPanelHeight = compact ? 150 : 170;
+    const playerHpY = compact ? 492 : 506;
+    const playerHpBarY = compact ? 524 : 540;
+    const playerManaY = compact ? 538 : 554;
+    const playButtonY = compact ? 536 : 552;
+    const handLabelY = compact ? 548 : 560;
+    const handRowY = compact ? 558 : 574;
+    const handRowH = compact ? 148 : 170;
+    const handHintY = compact ? 718 : 756;
+    const endTurnY = compact ? 790 : 812;
+    const endTurnW = compact ? width - 40 : width - 24;
+    const endTurnH = compact ? 48 : MOBILE.buttonHeight;
+
     // ── Background panels ──
     this.add.rectangle(width / 2, 60, width - 20, 112, 0x16213e, 0.55).setStrokeStyle(2, 0x2a3b56);
     this.add.rectangle(width / 2, 202, width - 20, 160, 0x16213e, 0.35).setStrokeStyle(1, 0x2a3b56);
     this.add.rectangle(width / 2, 302, width - 20, 40, 0x16213e, 0.35);
     this.add.rectangle(width / 2, 406, width - 20, 160, 0x16213e, 0.35).setStrokeStyle(1, 0x2a3b56);
-    this.add.rectangle(width / 2, 534, width - 20, 72, 0x16213e, 0.55).setStrokeStyle(2, 0x2a3b56);
-    this.add.rectangle(width / 2, 658, width - 20, 170, 0x16213e, 0.35).setStrokeStyle(1, 0x2a3b56);
+    this.add.rectangle(width / 2, playerPanelY, width - 20, playerPanelHeight, 0x16213e, 0.55).setStrokeStyle(2, 0x2a3b56);
+    this.add.rectangle(width / 2, handPanelY, width - 20, handPanelHeight, 0x16213e, 0.35).setStrokeStyle(1, 0x2a3b56);
 
     // ── AI hero area ──
     this._aiHpLabel = this.add.text(24, 20, '', {
@@ -259,7 +277,7 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
       alpha: 0.85,
     });
 
-    this.add.text(16, 560, 'YOUR HAND', {
+    this.add.text(16, handLabelY, 'YOUR HAND', {
       fontSize: '11px',
       fontFamily: 'Arial Black, sans-serif',
       color: '#ffffff',
@@ -274,37 +292,37 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
     }).setOrigin(0.5);
 
     // ── Player hero area ──
-    this._playerHpLabel = this.add.text(24, 506, '', {
+    this._playerHpLabel = this.add.text(24, playerHpY, '', {
       fontSize: '18px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
     });
 
-    this._playerHpBarBg = this.add.rectangle(120, 540, 220, 18, 0x2a2a3a).setOrigin(0, 0.5);
-    this._playerHpBarFill = this.add.rectangle(120, 540, 220, 18, 0x44aaff).setOrigin(0, 0.5);
+    this._playerHpBarBg = this.add.rectangle(120, playerHpBarY, 220, 18, 0x2a2a3a).setOrigin(0, 0.5);
+    this._playerHpBarFill = this.add.rectangle(120, playerHpBarY, 220, 18, 0x44aaff).setOrigin(0, 0.5);
 
-    this._playerManaText = this.add.text(24, 554, '', {
+    this._playerManaText = this.add.text(24, playerManaY, '', {
       fontSize: MOBILE.bodyFontSize,
       fontFamily: 'Arial, sans-serif',
       color: '#f0a500',
     });
 
-    this._playButton = this._makeButton(316, 552, 64, 48, 'Play', () => this._playSelectedCard(), 0x16213e, '18px');
+    this._playButton = this._makeButton(316, playButtonY, 64, 44, 'Play', () => this._playSelectedCard(), 0x16213e, '18px');
 
     // ── Card rows ──
     this._aiFieldRow = this._createScrollableRow(16, 122, 358, 160);
     this._playerFieldRow = this._createScrollableRow(16, 326, 358, 160);
-    this._handRow = this._createScrollableRow(16, 574, 358, 170);
+    this._handRow = this._createScrollableRow(16, handRowY, 358, handRowH);
 
     // ── Play hint ──
-    this.add.text(width / 2, 756, 'Tap to select · Tap again to play', {
+    this.add.text(width / 2, handHintY, 'Tap to select · Tap again to play', {
       fontSize: '11px',
       fontFamily: 'Arial, sans-serif',
       color: '#888888',
     }).setOrigin(0.5);
 
     // ── End Turn button ──
-    this._endTurnButton = this._makeButton(width / 2, 812, width - 24, MOBILE.buttonHeight, 'End Turn', () => this._endPlayerTurn(), 0xf0a500, '24px', '#1a1a2e');
+    this._endTurnButton = this._makeButton(width / 2, endTurnY, endTurnW, endTurnH, 'End Turn', () => this._endPlayerTurn(), 0xf0a500, '24px', '#1a1a2e');
 
     // ── Forfeit button (top-left, clearly visible) ──
     this._forfeitBtn = this._makeButton(44, 14, 80, 28, '⚑ Forfeit', () => this._showForfeitConfirm(), 0x2a1a1a, '13px', '#ff8888');

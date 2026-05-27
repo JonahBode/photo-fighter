@@ -128,6 +128,9 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
       .setOrigin(0.5);
 
     this._makeButton(cx, height - 44, 'Back to Menu', () => this.scene.start('MainMenuScene'));
+
+    this.events.once('shutdown', () => this._cleanupDom());
+    this.events.once('destroy', () => this._cleanupDom());
   }
 
   _handleFileChange(e, mode) {
@@ -408,6 +411,17 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
     } catch (e) {
       this._setStatus('Error saving card — storage may be full.', '#ff6644');
     }
+  }
+
+  _cleanupDom() {
+    const domNodes = [this._uploadDom, this._choosePhotoDom, this._tierDom, this._cardNameInput];
+    domNodes.forEach((dom) => {
+      if (dom && typeof dom.destroy === 'function') dom.destroy();
+    });
+    this._uploadDom = null;
+    this._choosePhotoDom = null;
+    this._tierDom = null;
+    this._cardNameInput = null;
   }
 
   _setStatus(msg, color = '#ffffff') {
