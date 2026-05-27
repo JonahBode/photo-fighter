@@ -5,10 +5,13 @@
  */
 
 import STARTER_CARDS from '../data/starterCards.js';
+import {
+  isRenderableCard,
+  loadCustomCardsFromStorage,
+} from '../systems/CustomCardStorage.js';
 import { MOBILE } from '../utils/MobileLayout.js';
 
 const STORAGE_KEY_DECK = 'photoFighterPlayerDeck';
-const STORAGE_KEY_CUSTOM = 'photoFighterCustomCards';
 const MIN_DECK = 15;
 const MAX_DECK = 20;
 
@@ -75,6 +78,12 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
 
     this._renderCardGrid(available);
     if (!available.length) {
+      this.add.text(cx, 376, 'No valid cards found.\nImport cards in Card Creator to continue.', {
+        fontSize: '16px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#aaaaaa',
+        align: 'center',
+      }).setOrigin(0.5);
       this._setStatus('No cards yet! Go to Card Creator to add your first card.');
     }
 
@@ -420,29 +429,13 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
     }
   }
 
-  _loadCustomCards() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY_CUSTOM);
-      const parsed = raw ? JSON.parse(raw) : [];
-      if (!Array.isArray(parsed)) return [];
-      return parsed.map((card) => ({ ...card, unlocked: card.unlocked ?? true }));
-    } catch {
-      return [];
-    }
-  }
-
   _loadAvailableCards() {
-    const starterCards = STARTER_CARDS.filter((card) => card.tier === 1 || card.unlocked === true);
-    let customCards = [];
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY_CUSTOM);
-      const parsed = raw ? JSON.parse(raw) : [];
-      if (Array.isArray(parsed)) {
-        customCards = parsed.map((card) => ({ ...card, unlocked: true }));
-      }
-    } catch {
-      customCards = [];
-    }
+    const starterCards = STARTER_CARDS
+      .filter((card) => card.tier === 1 || card.unlocked === true)
+      .filter(isRenderableCard);
+    const customCards = loadCustomCardsFromStorage()
+      .map((card) => ({ ...card, unlocked: true }))
+      .filter(isRenderableCard);
 
     const deduped = new Map();
     [...starterCards, ...customCards].forEach((card) => {

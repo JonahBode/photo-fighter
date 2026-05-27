@@ -5,9 +5,12 @@
  */
 
 import { createCard } from '../systems/CardSchema.js';
+import {
+  loadCustomCardsFromStorage,
+  saveCustomCardsToStorage,
+} from '../systems/CustomCardStorage.js';
 import { MOBILE } from '../utils/MobileLayout.js';
 
-const STORAGE_KEY = 'photoFighterCustomCards';
 const CATEGORIES = ['Tank', 'Assassin', 'Mage', 'Support'];
 const KEYWORD_POOL = ['Taunt', 'Poison', 'Shield', 'Lifesteal', 'Haste', 'Stun'];
 
@@ -209,16 +212,9 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
     card.tier = 1;
     card.unlocked = true;
 
-    let cards = [];
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      cards = Array.isArray(parsed) ? parsed : [];
-    } catch {
-      cards = [];
-    }
+    let cards = this._loadCustomCards();
     cards.push(card);
-    this._saveCustomCards(cards);
+    cards = this._saveCustomCards(cards);
 
     if (nameField) nameField.value = '';
     this._pendingImage = null;
@@ -266,8 +262,8 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
 
       const cards = this._loadCustomCards();
       cards.push(...imported);
-      this._saveCustomCards(cards);
-      this._countText.setText(`Saved custom cards: ${cards.length}`);
+      const savedCards = this._saveCustomCards(cards);
+      this._countText.setText(`Saved custom cards: ${savedCards.length}`);
       this._setStatus(
         `Imported ${imported.length} cards from screenshot. Bottom row starts unlocked.`,
         '#44ff88'
@@ -390,23 +386,15 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
   }
 
   _loadCustomCards() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
+    return loadCustomCardsFromStorage();
   }
 
   _saveCustomCards(cards) {
     try {
-      const normalized = cards.map((card) => ({
-        ...card,
-        unlocked: card.unlocked ?? true,
-      }));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+      return saveCustomCardsToStorage(cards);
     } catch (e) {
       this._setStatus('Error saving card — storage may be full.', '#ff6644');
+      return this._loadCustomCards();
     }
   }
 
