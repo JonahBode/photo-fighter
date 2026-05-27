@@ -88,6 +88,7 @@ You can now import a full tier-board screenshot directly in **Card Creator**:
 2. Enter row/column counts and crop percentages when prompted.
 3. The importer slices cards from the board grid.
 4. **Bottom row** imports as **Tier 1 (unlocked)**; each row above imports as a higher locked tier.
+5. Imported entries are validated before saving: malformed cards are repaired with safe defaults (including unique IDs) or skipped if unusable.
 
 After import, go to **Build Deck** to pick unlocked cards and save a playable deck.
 

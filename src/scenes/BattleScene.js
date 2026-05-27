@@ -14,12 +14,14 @@ import {
   tickPoison,
   buildTurnOrder,
 } from '../systems/CombatManager.js';
+import {
+  isRenderableCard,
+  loadCustomCardsFromStorage,
+} from '../systems/CustomCardStorage.js';
 import { shuffleArray } from '../systems/RandomUtils.js';
 import { MOBILE } from '../utils/MobileLayout.js';
 
 const STORAGE_KEY_DECK = 'photoFighterPlayerDeck';
-const STORAGE_KEY_CUSTOM = 'photoFighterCustomCards';
-
 const HAND_CARD_W = 75;
 const HAND_CARD_H = 140;
 const FIELD_CARD_W = 100;
@@ -47,8 +49,16 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
     this.add.rectangle(width / 2, height / 2, width, height, 0x0d1b2a);
 
     const allCards = this._getAllCards();
+    if (!allCards.length) {
+      this._showFallbackState('No valid cards found. Open Card Creator to import cards safely.');
+      return;
+    }
     const playerDeckCards = this._buildPlayerDeck(allCards);
     const aiDeckCards = this._buildAIDeck(allCards);
+    if (!playerDeckCards.length || !aiDeckCards.length) {
+      this._showFallbackState('Could not build a playable battle deck. Please update your deck in Build Deck.');
+      return;
+    }
 
     this._playerMana = new ManaSystem();
     this._aiMana = new ManaSystem();
@@ -646,12 +656,13 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
   }
 
   _getAllCards() {
-    try {
-      const custom = JSON.parse(localStorage.getItem(STORAGE_KEY_CUSTOM) || '[]');
-      return [...STARTER_CARDS, ...custom];
-    } catch {
-      return [...STARTER_CARDS];
-    }
+    const deduped = new Map();
+    [...STARTER_CARDS, ...loadCustomCardsFromStorage()]
+      .filter(isRenderableCard)
+      .forEach((card) => {
+        deduped.set(card.id, card);
+      });
+    return [...deduped.values()];
   }
 
   _buildPlayerDeck(allCards) {
@@ -669,5 +680,24 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
     const pool = allCards.filter((c) => c.tier === 1);
     const shuffled = shuffleArray([...pool]);
     return shuffled.slice(0, Math.min(15, shuffled.length));
+  }
+
+  _showFallbackState(message) {
+    const { width, height } = this.scale;
+    this.add.text(width / 2, height / 2 - 24, 'Battle Unavailable', {
+      fontSize: '30px',
+      fontFamily: 'Arial Black, sans-serif',
+      color: '#f0a500',
+    }).setOrigin(0.5);
+    this.add.text(width / 2, height / 2 + 28, message, {
+      fontSize: '16px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#cccccc',
+      align: 'center',
+      wordWrap: { width: width - 40 },
+    }).setOrigin(0.5);
+    this._makeButton(width / 2, height / 2 + 96, 220, 52, 'Back to Menu', () =>
+      this.scene.start('MainMenuScene')
+    );
   }
 }
