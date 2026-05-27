@@ -60,10 +60,11 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
       available = progression.getUnlockedCards(allCards);
     } catch (e) {
       console.warn('DeckBuilder: ProgressionManager failed, showing tier 1 cards', e);
-      available = allCards.filter((c) => c.tier === 1 && c.unlocked);
+      available = allCards.filter((c) => c.unlocked === true || c.tier === 1);
     }
     if (!available.length) {
-      available = allCards.filter((c) => c.tier === 1 && c.unlocked);
+      console.warn('DeckBuilder: getUnlockedCards returned 0 cards, using defensive fallback');
+      available = allCards.filter((c) => c.unlocked === true || c.tier === 1);
     }
 
     const savedDeck = this._loadSavedDeck();
@@ -434,7 +435,9 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
   _loadCustomCards() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY_CUSTOM);
-      return raw ? JSON.parse(raw) : [];
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((card) => ({ ...card, unlocked: card.unlocked ?? true }));
     } catch {
       return [];
     }
