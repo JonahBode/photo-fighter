@@ -76,9 +76,10 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
       this._handleFileChange(e, 'single');
     });
 
-    this._makeButton(cx, 426, 'Save Single Card', () => this._saveCard());
+    this._makeButton(cx, 426, '📋 Paste from Clipboard', () => this._pasteFromClipboard());
+    this._makeButton(cx, 490, 'Save Single Card', () => this._saveCard());
 
-    this._tierDom = this.add.dom(cx, 490).createFromHTML(
+    this._tierDom = this.add.dom(cx, 554).createFromHTML(
       `<label style="${fileInputStyle}">Import Tier Screenshot` +
       `<input type="file" accept="image/*" style="${hiddenInputStyle}" /></label>`
     );
@@ -198,6 +199,7 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
       category,
       unlocked: true,
     });
+    card.unlocked = true;
 
     const cards = this._loadCustomCards();
     cards.push(card);
@@ -215,6 +217,33 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
 
     this._countText.setText(`Saved custom cards: ${cards.length}`);
     this._setStatus(`Saved "${card.name}" to your collection.`, '#44ff88');
+  }
+
+  async _pasteFromClipboard() {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.read) {
+        this._setStatus('Clipboard paste not supported on this browser.', '#ff6644');
+        return;
+      }
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imageType = item.types.find((t) => t.startsWith('image/'));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            this._pendingImage = e.target.result;
+            this._showImagePreview(this._pendingImage);
+            this._setStatus('Image pasted! Give it a name and save.', '#44ff88');
+          };
+          reader.readAsDataURL(blob);
+          return;
+        }
+      }
+      this._setStatus('No image found in clipboard.', '#ff6644');
+    } catch (err) {
+      this._setStatus('Could not access clipboard. Try uploading instead.', '#ff6644');
+    }
   }
 
   _importTierBoard(base64) {
@@ -383,7 +412,11 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
 
   _saveCustomCards(cards) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+      const normalized = cards.map((card) => ({
+        ...card,
+        unlocked: card.unlocked ?? true,
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
     } catch (e) {
       this._setStatus('Error saving card — storage may be full.', '#ff6644');
     }

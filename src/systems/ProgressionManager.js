@@ -107,9 +107,17 @@ export default class ProgressionManager {
    * @returns {import('./CardSchema.js').Card[]}
    */
   getUnlockedCards(allCards) {
-    return allCards.filter(
-      (c) => c.unlocked || this.state.unlockedCardIds.includes(c.id)
+    const cards = Array.isArray(allCards) ? allCards : [];
+    const unlocked = cards.filter(
+      (c) => c && (c.unlocked === true || c.tier === 1 || this.state.unlockedCardIds.includes(c.id))
     );
+
+    if (!unlocked.length && cards.length) {
+      console.warn('ProgressionManager: no unlocked cards found, using defensive fallback');
+      return cards.filter((c) => c && (c.unlocked === true || c.tier === 1));
+    }
+
+    return unlocked;
   }
 
   // ─── Stats accessors ─────────────────────────────────────────────────────────
