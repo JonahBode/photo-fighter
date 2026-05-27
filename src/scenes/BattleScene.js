@@ -20,8 +20,8 @@ import { MOBILE } from '../utils/MobileLayout.js';
 const STORAGE_KEY_DECK = 'photoFighterPlayerDeck';
 const STORAGE_KEY_CUSTOM = 'photoFighterCustomCards';
 
-const HAND_CARD_W = 90;
-const HAND_CARD_H = 160;
+const HAND_CARD_W = 75;
+const HAND_CARD_H = 140;
 const FIELD_CARD_W = 100;
 const FIELD_CARD_H = 150;
 
@@ -516,7 +516,7 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
 
       const items = [bg, name, cost, atk, keywords];
       if (this.textures.exists(card.id)) {
-        items.push(this.add.image(x, cardY - 50, card.id).setDisplaySize(HAND_CARD_W - 6, 52));
+        items.push(this.add.image(x, cardY - 44, card.id).setDisplaySize(HAND_CARD_W - 6, 44));
       }
       this._handRow.container.add(items);
     });
