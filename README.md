@@ -107,6 +107,8 @@ After import, go to **Build Deck** to pick unlocked cards and save a playable de
 ### Battle scene
 
 - Card images are shown on both field cards and hand cards.
+- Opening hand is **4 cards** (reduced from 5 for better mobile readability).
+- Hand cards are sized to fit cleanly in portrait (390 × 844) without overlap.
 - Selected hand cards visually lift when tapped.
 - Layout labels are shown for **ENEMY FIELD**, **YOUR FIELD**, and **YOUR HAND**.
 - Forfeit uses a confirmation overlay (**Yes / Cancel**) instead of instant exit.
