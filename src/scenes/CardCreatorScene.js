@@ -13,8 +13,8 @@ import { MOBILE } from '../utils/MobileLayout.js';
 
 const CATEGORIES = ['Tank', 'Assassin', 'Mage', 'Support'];
 const KEYWORD_POOL = ['Taunt', 'Poison', 'Shield', 'Lifesteal', 'Haste', 'Stun'];
-const IMPORT_MAX_CELL_SIZE = 320;
-const IMPORT_IMAGE_QUALITY = 0.8;
+const IMPORT_MAX_CELL_SIZE = 180;
+const IMPORT_IMAGE_QUALITY = 0.72;
 
 export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-line no-undef
   constructor() {
@@ -168,6 +168,7 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
     }
 
     this.textures.once('addtexture-cardPreview', () => {
+      if (!this.scene.isActive()) return;
       this._previewImage = this.add
         .image(this.scale.width / 2, 170, 'cardPreview')
         .setDisplaySize(152, 152)
@@ -217,6 +218,11 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
     let cards = this._loadCustomCards();
     cards.push(card);
     cards = this._saveCustomCards(cards);
+    const savedCard = cards.find((c) => c.id === card.id);
+    if (!savedCard) {
+      this._setStatus('Could not save card — storage may be full. Older imports were kept.', '#ff6644');
+      return;
+    }
 
     if (nameField) nameField.value = '';
     this._pendingImage = null;
@@ -229,7 +235,7 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
     }
 
     this._countText.setText(`Saved custom cards: ${cards.length}`);
-    this._setStatus(`Saved "${card.name}" to your collection.`, '#44ff88');
+    this._setStatus(`Saved "${savedCard.name}" to your collection.`, '#44ff88');
   }
 
   _importTierBoard(base64) {
@@ -266,9 +272,17 @@ export default class CardCreatorScene extends Phaser.Scene { // eslint-disable-l
       cards.push(...imported);
       const savedCards = this._saveCustomCards(cards);
       this._countText.setText(`Saved custom cards: ${savedCards.length}`);
+      const importedSavedCount = imported.filter((card) => savedCards.some((saved) => saved.id === card.id)).length;
+      if (!importedSavedCount) {
+        this._setStatus('Import could not be saved — storage may be full.', '#ff6644');
+        return;
+      }
+      const skipped = imported.length - importedSavedCount;
       this._setStatus(
-        `Imported ${imported.length} cards from screenshot. Bottom row starts unlocked.`,
-        '#44ff88'
+        skipped > 0
+          ? `Imported ${importedSavedCount}/${imported.length} cards. Some were skipped to keep storage stable.`
+          : `Imported ${imported.length} cards from screenshot. Bottom row starts unlocked.`,
+        skipped > 0 ? '#f0a500' : '#44ff88'
       );
     };
     image.onerror = () => this._setStatus('Could not read screenshot image.', '#ff6644');

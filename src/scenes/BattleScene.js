@@ -43,7 +43,12 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
     });
 
     // Load all card images dynamically so they're available for rendering
-    const allCards = this._getAllCards(true);
+    let allCards = [];
+    try {
+      allCards = this._getAllCards(true);
+    } catch {
+      allCards = [];
+    }
     allCards.forEach((card) => {
       if (card.image && !this.textures.exists(card.id)) {
         try {
@@ -61,7 +66,12 @@ export default class BattleScene extends Phaser.Scene { // eslint-disable-line n
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x0d1b2a);
 
-    const allCards = this._getAllCards(true);
+    let allCards = [];
+    try {
+      allCards = this._getAllCards(true);
+    } catch {
+      allCards = [];
+    }
     if (!allCards.length) {
       this._showFallbackState('No valid cards found. Open Card Creator to import cards safely.');
       return;

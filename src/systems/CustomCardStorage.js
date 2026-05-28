@@ -3,6 +3,8 @@ import { createCard } from './CardSchema.js';
 const STORAGE_KEY_CUSTOM = 'photoFighterCustomCards';
 const FALLBACK_IMAGE_DATA =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+const MAX_CUSTOM_CARDS = 120;
+const MAX_IMAGE_REF_LENGTH = 350000;
 
 function isObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -42,7 +44,8 @@ function normalizeImage(value) {
   if (typeof value !== 'string') return FALLBACK_IMAGE_DATA;
   const image = value.trim();
   if (!image) return FALLBACK_IMAGE_DATA;
-  if (image.startsWith('data:image/')) return image;
+  if (image.length > MAX_IMAGE_REF_LENGTH) return FALLBACK_IMAGE_DATA;
+  if (image.startsWith('data:image/') && image.includes(',')) return image;
   if (image.startsWith('http://') || image.startsWith('https://')) return image;
   return FALLBACK_IMAGE_DATA;
 }
@@ -67,8 +70,9 @@ function normalizeCustomCards(cards) {
   if (!Array.isArray(cards)) return [];
   const usedIds = new Set();
   const normalized = [];
+  const sourceCards = cards.slice(-MAX_CUSTOM_CARDS);
 
-  cards.forEach((raw, index) => {
+  sourceCards.forEach((raw, index) => {
     if (!isObject(raw)) return;
 
     const tier = clampInt(raw.tier ?? 1, 1, 8);
@@ -113,12 +117,17 @@ function safeStorageRead() {
 }
 
 function safeStorageWrite(cards) {
-  try {
-    localStorage.setItem(STORAGE_KEY_CUSTOM, JSON.stringify(cards));
-    return true;
-  } catch {
-    return false;
+  if (!Array.isArray(cards)) return null;
+  for (let i = 0; i <= cards.length; i += 1) {
+    const candidate = cards.slice(i);
+    try {
+      localStorage.setItem(STORAGE_KEY_CUSTOM, JSON.stringify(candidate));
+      return candidate;
+    } catch {
+      // Drop oldest cards until storage write fits, then keep playable subset.
+    }
   }
+  return null;
 }
 
 function parseStoredCards(raw) {
@@ -133,8 +142,9 @@ function parseStoredCards(raw) {
 
 export function saveCustomCardsToStorage(cards) {
   const normalized = normalizeCustomCards(cards);
-  safeStorageWrite(normalized);
-  return normalized;
+  const persisted = safeStorageWrite(normalized);
+  if (Array.isArray(persisted)) return persisted;
+  return loadCustomCardsFromStorage();
 }
 
 export function loadCustomCardsFromStorage() {
@@ -143,18 +153,28 @@ export function loadCustomCardsFromStorage() {
   const normalized = normalizeCustomCards(parsed);
 
   if (!raw || JSON.stringify(parsed) !== JSON.stringify(normalized)) {
-    safeStorageWrite(normalized);
+    const persisted = safeStorageWrite(normalized);
+    if (Array.isArray(persisted)) return persisted;
   }
 
   return normalized;
 }
 
 export function isRenderableCard(card) {
+  const hasValidImage =
+    typeof card?.image === 'string' &&
+    Boolean(card.image.trim()) &&
+    card.image.length <= MAX_IMAGE_REF_LENGTH &&
+    (card.image.startsWith('data:image/') ||
+      card.image.startsWith('http://') ||
+      card.image.startsWith('https://'));
+
   return (
     isObject(card) &&
     typeof card.id === 'string' &&
     Boolean(card.id.trim()) &&
     typeof card.name === 'string' &&
+    hasValidImage &&
     Array.isArray(card.attack) &&
     card.attack.length === 2 &&
     Number.isFinite(Number(card.attack[0])) &&
