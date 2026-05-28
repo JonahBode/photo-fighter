@@ -37,7 +37,12 @@ export default class DeckBuilderScene extends Phaser.Scene { // eslint-disable-l
     });
 
     // Load all card images so they display in the grid
-    const availableCards = this._loadAvailableCards(true);
+    let availableCards = [];
+    try {
+      availableCards = this._loadAvailableCards(true);
+    } catch {
+      availableCards = [];
+    }
     availableCards.forEach((card) => {
       if (card.image && !this.textures.exists(card.id)) {
         try {
